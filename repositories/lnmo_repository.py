@@ -1,6 +1,7 @@
 # repositories/lnmo_repository.py
 import requests
-from models.transaction import Transaction, db
+from models.transaction import Transaction
+from extension import db  # Import db from your main app file
 from datetime import datetime
 
 class LNMORepository:
