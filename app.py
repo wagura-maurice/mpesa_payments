@@ -1,29 +1,31 @@
 # app.py
-
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+from extension import db
 from controllers.lnmo_controller import lnmo_controller
 
-# Initialize the Flask application
-app = Flask(__name__)
+def create_app():
+    app = Flask(__name__)
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///mpesa.db'
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
+    # Initialize db with app
+    db.init_app(app)
+    
+    # Import models after db initialization to avoid circular imports
+    with app.app_context():
+        from models.transaction import Transaction
+        db.create_all()
+    
+    # Register blueprints
+    app.register_blueprint(lnmo_controller, url_prefix='/ipn/daraja')
+    
+    @app.route('/')
+    def index():
+        return "Welcome to the MPESA Payments API!"
+    
+    return app
 
-# Configure the database URI (SQLite for simplicity)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///mpesa.db'  # Change this to your database URI
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# Initialize the database
-db = SQLAlchemy(app)
-
-# Register the LNMO controller routes
-app.register_blueprint(lnmo_controller, url_prefix='/ipn/daraja')
-
-@app.route('/')
-def index():
-    """
-    Home route for the application.
-    """
-    return "Welcome to the MPESA Payments API!"
+app = create_app()
 
 if __name__ == '__main__':
-    # Run the application
     app.run(debug=True)
