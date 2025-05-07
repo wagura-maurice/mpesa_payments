@@ -2,8 +2,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from sqlalchemy import Enum
-
-db = SQLAlchemy()
+from extension import db 
 
 class Transaction(db.Model):
     __tablename__ = 'transactions'
