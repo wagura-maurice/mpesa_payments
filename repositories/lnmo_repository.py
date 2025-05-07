@@ -3,6 +3,7 @@ import requests
 from models.transaction import Transaction
 from extension import db  # Import db from your main app file
 from datetime import datetime
+import base64
 
 
 class LNMORepository:
