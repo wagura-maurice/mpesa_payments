@@ -8,12 +8,12 @@ import base64
 
 class LNMORepository:
     # Hardcoded configurations
-    MPESA_LNMO_CONSUMER_KEY ="LO5CCWw0F9QdXWVOMURJGUA8OIEGJ4kL53b2e5ZCm4nKCs7J" #"uKxU78Y9q2cFruO2fKRWuofRCObzMQh8"
-    MPESA_LNMO_CONSUMER_SECRET = "yWbM4wSsOY7CMK4vhdkCgVAcZiBFLA3FtNQV2E3M4odi9gEXXjaHkfcoH42rEsv6" #"By9NUqT7NGhzy5Pj"
+    MPESA_LNMO_CONSUMER_KEY = "LO5CCWw0F9QdXWVOMURJGUA8OIEGJ4kL53b2e5ZCm4nKCs7J"  # "uKxU78Y9q2cFruO2fKRWuofRCObzMQh8"
+    MPESA_LNMO_CONSUMER_SECRET = "yWbM4wSsOY7CMK4vhdkCgVAcZiBFLA3FtNQV2E3M4odi9gEXXjaHkfcoH42rEsv6"  # "By9NUqT7NGhzy5Pj"
     MPESA_LNMO_ENVIRONMENT = "sandbox"
-    MPESA_LNMO_INITIATOR_PASSWORD = "Safaricom123!!" #"HaVh3tgp"
-    MPESA_LNMO_INITIATOR_USERNAME = "testapi" #"testapi779"
-    MPESA_LNMO_PASS_KEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919" #"bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
+    MPESA_LNMO_INITIATOR_PASSWORD = "Safaricom123!!"  # "HaVh3tgp"
+    MPESA_LNMO_INITIATOR_USERNAME = "testapi"  # "testapi779"
+    MPESA_LNMO_PASS_KEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"  # "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
     MPESA_LNMO_SHORT_CODE = "174379"
 
     def transact(self, data):
@@ -32,7 +32,7 @@ class LNMORepository:
             "PartyA": data["PhoneNumber"],
             "PartyB": self.MPESA_LNMO_SHORT_CODE,
             "PhoneNumber": data["PhoneNumber"],
-            "CallBackURL": "https://f4f7-197-237-26-50.ngrok-free.app/ipn/daraja/lnmo/callback",  # Replace with your callback URL
+            "CallBackURL": "https://f2ea-197-237-26-50.ngrok-free.app/ipn/daraja/lnmo/callback",  # Replace with your callback URL
             "AccountReference": data["AccountReference"],
             "TransactionDesc": "Payment for order " + data["AccountReference"],
         }
@@ -81,24 +81,41 @@ class LNMORepository:
         return response.json()
 
     def callback(self, data):
-        # Implement the callback logic here
-        # Process the callback data and update the transaction status
+        # Extract CheckoutRequestID from the callback data
         checkout_request_id = data["Body"]["stkCallback"]["CheckoutRequestID"]
+        # Find the transaction in the database
         transaction = Transaction.query.filter_by(
             transaction_id=checkout_request_id
         ).first()
 
         if transaction:
+            # Store the entire callback response in _feedback
             transaction._feedback = data
+            # Get the ResultCode to determine success or failure
             result_code = data["Body"]["stkCallback"]["ResultCode"]
+
             if result_code == 0:
+                # Transaction is successful, set status to 4
                 transaction._status = 4  # Assuming 4 for accepted
+                # Safely access CallbackMetadata
+                callback_metadata = data["Body"]["stkCallback"].get("CallbackMetadata")
+                if callback_metadata:
+                    # Get the list of items, default to empty list if not present
+                    items = callback_metadata.get("Item", [])
+                    # Iterate through items to find MpesaReceiptNumber
+                    for item in items:
+                        if item.get("Name") == "MpesaReceiptNumber" and "Value" in item:
+                            # Update transaction_code with the MpesaReceiptNumber value
+                            transaction.transaction_code = item["Value"]
+                            break
             else:
+                # Transaction failed, set status to 3
                 transaction._status = 3  # Assuming 3 for rejected
+
+                # Commit all changes to the database
             db.session.commit()
 
         return data
-    
 
     def generate_access_token(self):
         """
@@ -106,7 +123,9 @@ class LNMORepository:
         """
         try:
             endpoint = f"https://{self.MPESA_LNMO_ENVIRONMENT}.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
-            credentials = f"{self.MPESA_LNMO_CONSUMER_KEY}:{self.MPESA_LNMO_CONSUMER_SECRET}"
+            credentials = (
+                f"{self.MPESA_LNMO_CONSUMER_KEY}:{self.MPESA_LNMO_CONSUMER_SECRET}"
+            )
             encoded_credentials = base64.b64encode(credentials.encode()).decode()
 
             headers = {
