@@ -8,12 +8,12 @@ import base64
 
 class LNMORepository:
     # Hardcoded configurations
-    MPESA_LNMO_CONSUMER_KEY = "uKxU78Y9q2cFruO2fKRWuofRCObzMQh8"
-    MPESA_LNMO_CONSUMER_SECRET = "By9NUqT7NGhzy5Pj"
+    MPESA_LNMO_CONSUMER_KEY ="LO5CCWw0F9QdXWVOMURJGUA8OIEGJ4kL53b2e5ZCm4nKCs7J" #"uKxU78Y9q2cFruO2fKRWuofRCObzMQh8"
+    MPESA_LNMO_CONSUMER_SECRET = "yWbM4wSsOY7CMK4vhdkCgVAcZiBFLA3FtNQV2E3M4odi9gEXXjaHkfcoH42rEsv6" #"By9NUqT7NGhzy5Pj"
     MPESA_LNMO_ENVIRONMENT = "sandbox"
-    MPESA_LNMO_INITIATOR_PASSWORD = "HaVh3tgp"
-    MPESA_LNMO_INITIATOR_USERNAME = "testapi779"
-    MPESA_LNMO_PASS_KEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
+    MPESA_LNMO_INITIATOR_PASSWORD = "Safaricom123!!" #"HaVh3tgp"
+    MPESA_LNMO_INITIATOR_USERNAME = "testapi" #"testapi779"
+    MPESA_LNMO_PASS_KEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919" #"bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
     MPESA_LNMO_SHORT_CODE = "174379"
 
     def transact(self, data):
@@ -32,7 +32,7 @@ class LNMORepository:
             "PartyA": data["PhoneNumber"],
             "PartyB": self.MPESA_LNMO_SHORT_CODE,
             "PhoneNumber": data["PhoneNumber"],
-            "CallBackURL": "https://example.com/callback",  # Replace with your callback URL
+            "CallBackURL": "https://f4f7-197-237-26-50.ngrok-free.app/ipn/daraja/lnmo/callback",  # Replace with your callback URL
             "AccountReference": data["AccountReference"],
             "TransactionDesc": "Payment for order " + data["AccountReference"],
         }
