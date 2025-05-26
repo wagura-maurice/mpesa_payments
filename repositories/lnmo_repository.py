@@ -4,17 +4,19 @@ from models.transaction import Transaction
 from extension import db  # Import db from your main app file
 from datetime import datetime
 import base64
+import os
 
 
 class LNMORepository:
-    # Hardcoded configurations
-    MPESA_LNMO_CONSUMER_KEY ="LO5CCWw0F9QdXWVOMURJGUA8OIEGJ4kL53b2e5ZCm4nKCs7J" #"uKxU78Y9q2cFruO2fKRWuofRCObzMQh8"
-    MPESA_LNMO_CONSUMER_SECRET = "yWbM4wSsOY7CMK4vhdkCgVAcZiBFLA3FtNQV2E3M4odi9gEXXjaHkfcoH42rEsv6" #"By9NUqT7NGhzy5Pj"
-    MPESA_LNMO_ENVIRONMENT = "sandbox"
-    MPESA_LNMO_INITIATOR_PASSWORD = "Safaricom123!!" #"HaVh3tgp"
-    MPESA_LNMO_INITIATOR_USERNAME = "testapi" #"testapi779"
-    MPESA_LNMO_PASS_KEY = "bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919" #"bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919"
-    MPESA_LNMO_SHORT_CODE = "174379"
+    MPESA_LNMO_CONSUMER_KEY = os.getenv("MPESA_LNMO_CONSUMER_KEY")
+    MPESA_LNMO_CONSUMER_SECRET = os.getenv("MPESA_LNMO_CONSUMER_SECRET")
+    MPESA_LNMO_ENVIRONMENT = os.getenv("MPESA_LNMO_ENVIRONMENT")
+    MPESA_LNMO_INITIATOR_PASSWORD = os.getenv("MPESA_LNMO_INITIATOR_PASSWORD")
+    MPESA_LNMO_INITIATOR_USERNAME = os.getenv("MPESA_LNMO_INITIATOR_USERNAME")
+    MPESA_LNMO_PASS_KEY = os.getenv("MPESA_LNMO_PASS_KEY")
+    MPESA_LNMO_SHORT_CODE = os.getenv("MPESA_LNMO_SHORT_CODE")
+
+    MPESA_LNMO_CALLBACK_URL = os.getenv("MPESA_LNMO_CALLBACK_URL")
 
     def transact(self, data):
         # Implement the transaction logic here
@@ -32,7 +34,7 @@ class LNMORepository:
             "PartyA": data["PhoneNumber"],
             "PartyB": self.MPESA_LNMO_SHORT_CODE,
             "PhoneNumber": data["PhoneNumber"],
-            "CallBackURL": "https://f4f7-197-237-26-50.ngrok-free.app/ipn/daraja/lnmo/callback",  # Replace with your callback URL
+            "CallBackURL": self.MPESA_LNMO_CALLBACK_URL, 
             "AccountReference": data["AccountReference"],
             "TransactionDesc": "Payment for order " + data["AccountReference"],
         }
@@ -80,24 +82,62 @@ class LNMORepository:
         response = requests.post(endpoint, json=payload, headers=headers)
         return response.json()
 
+    # def callback(self, data):
+    #     # Implement the callback logic here
+    #     # Process the callback data and update the transaction status
+    #     checkout_request_id = data["Body"]["stkCallback"]["CheckoutRequestID"]
+    #     transaction = Transaction.query.filter_by(
+    #         transaction_id=checkout_request_id
+    #     ).first()
+
+    #     if transaction:
+    #         transaction._feedback = data
+    #         result_code = data["Body"]["stkCallback"]["ResultCode"]
+    #         if result_code == 0:
+    #             transaction._status = 4  # Assuming 4 for accepted
+    #         else:
+    #             transaction._status = 3  # Assuming 3 for rejected
+    #         db.session.commit()
+
+    #     return data
+
     def callback(self, data):
-        # Implement the callback logic here
-        # Process the callback data and update the transaction status
+        # Extract CheckoutRequestID from the callback data
         checkout_request_id = data["Body"]["stkCallback"]["CheckoutRequestID"]
+        # Find the transaction in the database
         transaction = Transaction.query.filter_by(
             transaction_id=checkout_request_id
         ).first()
 
         if transaction:
+            # Store the entire callback response in _feedback
             transaction._feedback = data
+            # Get the ResultCode to determine success or failure
             result_code = data["Body"]["stkCallback"]["ResultCode"]
+
             if result_code == 0:
+                # Transaction is successful, set status to 4
                 transaction._status = 4  # Assuming 4 for accepted
+                # Safely access CallbackMetadata
+                callback_metadata = data["Body"]["stkCallback"].get("CallbackMetadata")
+                if callback_metadata:
+                    # Get the list of items, default to empty list if not present
+                    items = callback_metadata.get("Item", [])
+                    # Iterate through items to find MpesaReceiptNumber
+                    for item in items:
+                        if item.get("Name") == "MpesaReceiptNumber" and "Value" in item:
+                            # Update transaction_code with the MpesaReceiptNumber value
+                            transaction.transaction_code = item["Value"]
+                            break
             else:
+                # Transaction failed, set status to 3
                 transaction._status = 3  # Assuming 3 for rejected
+
+                # Commit all changes to the database
             db.session.commit()
 
         return data
+
     
 
     def generate_access_token(self):
