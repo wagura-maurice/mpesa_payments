@@ -117,7 +117,7 @@ class LNMORepository:
 
             if result_code == 0:
                 # Transaction is successful, set status to 4
-                transaction._status = 4  # Assuming 4 for accepted
+                transaction._status = 4  # for accepted
                 # Safely access CallbackMetadata
                 callback_metadata = data["Body"]["stkCallback"].get("CallbackMetadata")
                 if callback_metadata:
